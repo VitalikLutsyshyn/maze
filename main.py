@@ -3,6 +3,7 @@ from random import*
 #ЗНАЙТИ МУЗИКУ ДЛЯ ГРИ
 init()
 font.init()
+mixer.init()
 FONT_NAME = "Impact"
 FPS = 90
 WIDTH,HEIGH = 900,612
@@ -14,6 +15,14 @@ WHITE = (255,255,255)
 window = display.set_mode((WIDTH,HEIGH))
 display.set_caption("maze")
 clock = time.Clock()
+#Музика
+wallking_sound = mixer.Sound("asets/music/wallking.wav")
+chest_sound = mixer.Sound("asets/music/Chest Creak.wav")
+coin_sound = mixer.Sound("asets/music/coin.wav")
+mixer.music.load("asets/music/Burnt Spirit.mp3")
+mixer.music.set_volume(0.1)
+# mixer.music.play()#Відтвореня музики
+
 
 sprites = sprite.Group()
 walls = sprite.Group()
@@ -84,6 +93,7 @@ class Chest(GameSprite):
         self.treasure_list = ["gold","hp"]
 
     def open(self):
+        chest_sound.play()
         self.treasure = choice(self.treasure_list)
         if self.treasure == "gold":
             self.count = randint(1,10)
@@ -153,6 +163,7 @@ class Player(GameSprite):
         if self.check_collision(golds,True):
             self.gold += 5
             gold_counter.set_value(self.gold)
+            coin_sound.play()
 
         if self.check_collision(scrolls,True):
             self.scroll += 1
