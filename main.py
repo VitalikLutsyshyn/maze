@@ -1,10 +1,10 @@
 from pygame import*
 from random import*
-
+#ЗНАЙТИ МУЗИКУ ДЛЯ ГРИ
 init()
 font.init()
 FONT_NAME = "Impact"
-FPS = 60
+FPS = 90
 WIDTH,HEIGH = 900,612
 run = True
 MAP_WIDTH = 25
@@ -19,6 +19,9 @@ sprites = sprite.Group()
 walls = sprite.Group()
 dragons = sprite.Group()
 golds = sprite.Group()
+scrolls = sprite.Group()
+keys = sprite.Group()
+chests = sprite.Group()
 
 wall_img1 = image.load("asets/map/catacombs_0.png")
 dragon_img_green = image.load("asets/map/dragon_form_green.png")
@@ -34,6 +37,8 @@ chest_open_img = image.load("asets/map/chest_2_open.png")
 chest_close_img = image.load("asets/map/chest_2_closed.png")
 close_door_img = image.load("asets/map/runed_door.png")
 open_door_img = image.load("asets/map/closed_door.png")
+hp_img = image.load("asets/map/heart_old.png")
+
 
 class Counter:
     def __init__(self,value,sprite_img,x,y,width,height):
@@ -47,6 +52,10 @@ class Counter:
         window.blit(self.image,self.rect)
         window.blit(self.label,(self.rect.right +10,self.rect.y))
 
+    def set_value(self,new_value):
+        self.label = self.font.render(str(new_value),True,WHITE)
+
+
 
 
 class GameSprite(sprite.Sprite):
@@ -56,14 +65,38 @@ class GameSprite(sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
+        self.mask = mask.from_surface(self.image)
         sprites.add(self)
 
     def check_collision(self,spritegroup,dokill = False):
-        sprites_list = sprite.spritecollide(self,spritegroup,dokill) 
+        sprites_list = sprite.spritecollide(self,spritegroup,dokill,sprite.collide_mask) 
         if len(sprites_list) > 0:
             return True
         else:
             return False
+
+class Chest(GameSprite):
+    def __init__(self, x, y,):
+        super().__init__(chest_close_img, x, y,TILE_SIZE,TILE_SIZE)
+        self.opened = False
+        self.opened_image  = transform.scale(chest_open_img,(TILE_SIZE,TILE_SIZE))   
+        self.treasure = None
+        self.treasure_list = ["gold","hp"]
+
+    def open(self):
+        self.treasure = choice(self.treasure_list)
+        if self.treasure == "gold":
+            self.count = randint(1,10)
+        else:
+            self.count = 5
+
+        self.image = self.opened_image
+        self.opened = True
+        return self.treasure, self.count
+
+
+
+
 
 class Dragon(GameSprite):
     def __init__(self,sprite_img, x, y,hp):
@@ -94,20 +127,24 @@ class Player(GameSprite):
         super().__init__(player_img, x, y,TILE_SIZE-7 ,TILE_SIZE-7)
         self.hp = hp
         self.gold = gold
+        self.scroll = 0
+        self.keys = 0
+        self.hp = 20
         self.dir = "right"
-        self.speed = 5
+        self.speed = 3
+        self.get_hit = False
     
 
     def update(self):
         old_pos = self.rect.x,self.rect.y
-        keys = key.get_pressed()
-        if keys[K_w]:
+        keys_pressed = key.get_pressed()
+        if keys_pressed[K_w]:
             self.rect.y -= self.speed
-        elif keys[K_s]:
+        elif keys_pressed[K_s]:
             self.rect.y += self.speed
-        elif keys[K_a]:
+        elif keys_pressed[K_a]:
             self.rect.x -= self.speed
-        elif keys[K_d]:
+        elif keys_pressed[K_d]:
             self.rect.x += self.speed   
 
         if self.check_collision(walls):
@@ -115,8 +152,42 @@ class Player(GameSprite):
 
         if self.check_collision(golds,True):
             self.gold += 5
-            
+            gold_counter.set_value(self.gold)
 
+        if self.check_collision(scrolls,True):
+            self.scroll += 1
+            scroll_counter.set_value(self.scroll)
+
+
+
+        if self.check_collision(keys,True):
+            self.keys += 1
+            keys_counter.set_value(self.keys)
+        
+        if self.check_collision(dragons,False):
+            if not self.get_hit and self.hp >= 0:
+                self.get_hit = True
+                self.hp -= 10
+                if self.hp <=0:
+                    self.hp = 0
+                hp_counter.set_value(self.hp)
+                
+        else:
+            self.get_hit = False
+
+        sprites_list = sprite.spritecollide(self,chests,False,sprite.collide_mask)
+        for chest in sprites_list:
+            if self.keys >=1 and not chest.opened:
+                self.keys -= 1
+                keys_counter.set_value(self.keys)
+                treasure,count = chest.open()
+                if treasure == "gold":
+                    self.gold += count
+                    gold_counter.set_value(self.gold)
+
+                if treasure == "hp":
+                    self.hp += count
+                    hp_counter.set_value(self.hp)
 
 
 with open("map.txt","r") as file:
@@ -139,13 +210,11 @@ with open("map.txt","r") as file:
             if symbol == "m":
                 walls.add(GameSprite(wall_img8,x,y,TILE_SIZE,TILE_SIZE))
             if symbol == "s":
-                GameSprite(scroll_img,x,y,TILE_SIZE-10,TILE_SIZE-10)
+                scrolls.add(GameSprite(scroll_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
             if symbol == "k":
-                GameSprite(key_img,x,y,TILE_SIZE-10,TILE_SIZE-10)
-            if symbol == "o":
-                GameSprite(chest_open_img,x,y,TILE_SIZE,TILE_SIZE)
+                keys.add(GameSprite(key_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
             if symbol == "c":
-                GameSprite(chest_close_img,x,y,TILE_SIZE,TILE_SIZE)
+                chests.add(Chest(x,y))
             if symbol == "p":
                 player = Player(x,y,100,0)
             if symbol == "j":
@@ -156,7 +225,10 @@ with open("map.txt","r") as file:
         y += TILE_SIZE
         x = TILE_SIZE/2
 
-gold_counter =Counter(player.gold,gold_img,10,0,30,30)
+gold_counter =Counter(player.gold,gold_img,300,0,30,30)
+scroll_counter =Counter(player.scroll,scroll_img,100,0,30,30)
+keys_counter =Counter(player.keys,key_img,200,0,30,30)
+hp_counter =Counter(player.hp,hp_img,10,0,30,30)
 
 while run:
     window.fill((0,0,0))
@@ -169,5 +241,8 @@ while run:
     sprites.update()
     sprites.draw(window)
     gold_counter.draw(window)
+    scroll_counter.draw(window)
+    keys_counter.draw(window)
+    hp_counter.draw(window)
     display.update()
     clock.tick(FPS)
