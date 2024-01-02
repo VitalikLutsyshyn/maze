@@ -4,7 +4,8 @@ from random import*
 init()
 font.init()
 mixer.init()
-FONT_NAME = "Impact"
+FONT_NAME = "asets/alagard_by_pix3m-d6awiwp.ttf"
+
 FPS = 90
 WIDTH,HEIGH = 900,612
 run = True
@@ -16,7 +17,8 @@ window = display.set_mode((WIDTH,HEIGH))
 display.set_caption("maze")
 clock = time.Clock()
 #Музика
-wallking_sound = mixer.Sound("asets/music/wallking.wav")
+wallking_sound = mixer.Sound("asets/music/full steps stereo.ogg")
+wallking_sound.set_volume(0.4)
 chest_sound = mixer.Sound("asets/music/Chest Creak.wav")
 coin_sound = mixer.Sound("asets/music/coin.wav")
 mixer.music.load("asets/music/Burnt Spirit.mp3")
@@ -49,10 +51,14 @@ open_door_img = image.load("asets/map/closed_door.png")
 hp_img = image.load("asets/map/heart_old.png")
 
 
+
+
+
+
 class Counter:
     def __init__(self,value,sprite_img,x,y,width,height):
         self.image = transform.scale(sprite_img,(width,height))
-        self.font = font.SysFont(FONT_NAME,height-5 )
+        self.font = font.Font(FONT_NAME,height-5 )
         self.rect = self.image.get_rect()
         self.rect.x,self.rect.y = x,y
         self.label = self.font.render(str(value),True,WHITE)
@@ -155,7 +161,13 @@ class Player(GameSprite):
         elif keys_pressed[K_a]:
             self.rect.x -= self.speed
         elif keys_pressed[K_d]:
-            self.rect.x += self.speed   
+            self.rect.x += self.speed 
+        else:
+            wallking_sound.stop()
+
+        if wallking_sound.get_num_channels() == 0:
+            wallking_sound.play(loops = -1)
+
 
         if self.check_collision(walls):
             self.rect.x,self.rect.y = old_pos
@@ -240,20 +252,28 @@ gold_counter =Counter(player.gold,gold_img,300,0,30,30)
 scroll_counter =Counter(player.scroll,scroll_img,100,0,30,30)
 keys_counter =Counter(player.keys,key_img,200,0,30,30)
 hp_counter =Counter(player.hp,hp_img,10,0,30,30)
+font1 = font.Font(FONT_NAME,80)
 
+result_text = font1.render("GAME OVER!",True,WHITE)
+
+
+game_over = False
 while run:
     window.fill((0,0,0))
     for e in event.get():
         if e.type == QUIT:
             run = False
 
-
-
-    sprites.update()
+    if player.hp <= 0:
+        game_over = True
+    if not game_over:
+        sprites.update()
     sprites.draw(window)
     gold_counter.draw(window)
     scroll_counter.draw(window)
     keys_counter.draw(window)
     hp_counter.draw(window)
+    if game_over:
+        window.blit(result_text,(250,250))
     display.update()
     clock.tick(FPS)
