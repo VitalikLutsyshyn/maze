@@ -8,6 +8,7 @@ FONT_NAME = "asets/alagard_by_pix3m-d6awiwp.ttf"
 
 FPS = 90
 WIDTH,HEIGH = 900,612
+MAX_LEVEL = 2
 run = True
 MAP_WIDTH = 25
 MAP_HEIGHT = 25
@@ -161,6 +162,7 @@ class Player(GameSprite):
         self.dir = "right"
         self.speed = 3
         self.get_hit = False
+        self.level = 1
     
 
     def update(self):
@@ -189,8 +191,11 @@ class Player(GameSprite):
                 door.remove(walls)
                 self.scrolls = 0
                 scroll_counter.set_value(self.scrolls)
-                win = True
-                result_text = font1.render("YOU WIN",True,WHITE)
+                if self.level < MAX_LEVEL :
+                    next_level()
+                else:
+                    win = True
+                    result_text = font1.render("YOU WIN",True,WHITE)
 
 
         if self.check_collision(walls):
@@ -248,63 +253,92 @@ class Button(GameSprite):
         window.blit(self.image,self.rect)
         window.blit(self.label,self.label_rect)
 
+ 
                  
+def read_map(filename="map1.txt"):
+    global player
+
+    for s in sprites:
+        if s != player:
+            s.kill()
+
+    with open(filename,"r") as file:
+        map = file.readlines()
+        x,y = TILE_SIZE/2,TILE_SIZE/2
+        for line in map:
+            for symbol in line:
+                if symbol == "w":
+                    walls.add(GameSprite(wall_img1,x,y,TILE_SIZE,TILE_SIZE))
+                if symbol == "d":
+                    dragons.add(Dragon(dragon_img_green,x,y,20))
+                if symbol == "q":
+                    dragons.add(Dragon(dragon_img_purple,x,y,20))
+                if symbol == "g":
+                    golds.add(GameSprite(gold_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
+                if symbol == "b":
+                    walls.add(GameSprite(brick_img0,x,y,TILE_SIZE,TILE_SIZE))
+                if symbol == "a":
+                    GameSprite(brick_img1,x,y,TILE_SIZE,TILE_SIZE)
+                if symbol == "m":
+                    walls.add(GameSprite(wall_img8,x,y,TILE_SIZE,TILE_SIZE))
+                if symbol == "s":
+                    scrolls.add(GameSprite(scroll_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
+                if symbol == "k":
+                    keys.add(GameSprite(key_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
+                if symbol == "c":
+                    chests.add(Chest(x,y))
+                if symbol == "p":
+                    player.rect.centerx =x   
+                    player.rect.centery = y  
+                if symbol == "j":
+                    door = Door(x,y)
+                    walls.add(door)
+                    doors.add(door)
+                
+
+                x += TILE_SIZE
+            y += TILE_SIZE
+            x = TILE_SIZE/2
 
 
-with open("map.txt","r") as file:
-    map = file.readlines()
-    x,y = TILE_SIZE/2,TILE_SIZE/2
-    for line in map:
-        for symbol in line:
-            if symbol == "w":
-                walls.add(GameSprite(wall_img1,x,y,TILE_SIZE,TILE_SIZE))
-            if symbol == "d":
-                dragons.add(Dragon(dragon_img_green,x,y,20))
-            if symbol == "q":
-                dragons.add(Dragon(dragon_img_purple,x,y,20))
-            if symbol == "g":
-                golds.add(GameSprite(gold_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
-            if symbol == "b":
-                walls.add(GameSprite(brick_img0,x,y,TILE_SIZE,TILE_SIZE))
-            if symbol == "a":
-                GameSprite(brick_img1,x,y,TILE_SIZE,TILE_SIZE)
-            if symbol == "m":
-                walls.add(GameSprite(wall_img8,x,y,TILE_SIZE,TILE_SIZE))
-            if symbol == "s":
-                scrolls.add(GameSprite(scroll_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
-            if symbol == "k":
-                keys.add(GameSprite(key_img,x,y,TILE_SIZE-10,TILE_SIZE-10))
-            if symbol == "c":
-                chests.add(Chest(x,y))
-            if symbol == "p":
-                player = Player(x,y,100,0)
-            if symbol == "j":
-                door = Door(x,y)
-                walls.add(door)
-                doors.add(door)
-            
+def new_game():
+    global gold_counter ,scroll_counter,keys_counter,hp_counter,game_over,win,player
+    player = Player(0,0,100,0)
+    read_map()
+    gold_counter =Counter(player.gold,gold_img,300,0,30,30)
+    scroll_counter =Counter(player.scroll,scroll_img,100,0,30,30)
+    keys_counter =Counter(player.keys,key_img,200,0,30,30)
+    hp_counter =Counter(player.hp,hp_img,10,0,30,30)
+    
+    game_over = False
+    win = False
 
-            x += TILE_SIZE
-        y += TILE_SIZE
-        x = TILE_SIZE/2
+def next_level():
+    player.level += 1
+    mapfile = f"map{player.level}.txt"
+    read_map(mapfile)
 
-gold_counter =Counter(player.gold,gold_img,300,0,30,30)
-scroll_counter =Counter(player.scroll,scroll_img,100,0,30,30)
-keys_counter =Counter(player.keys,key_img,200,0,30,30)
-hp_counter =Counter(player.hp,hp_img,10,0,30,30)
+
 font1 = font.Font(FONT_NAME,80)
-
 result_text = font1.render("GAME OVER!",True,WHITE)
 restart_btn = Button("RESTART",WIDTH/2,HEIGH-150)
 
-game_over = False
-win = False
+
+new_game()
 
 while run:
     window.fill((0,0,0))
     for e in event.get():
         if e.type == QUIT:
             run = False
+
+        if game_over or win:
+            if e.type == MOUSEBUTTONDOWN:
+                x,y = e.pos
+                if restart_btn.rect.collidepoint(x,y):
+                    new_game()
+
+
 
     if player.hp <= 0:
         game_over = True
